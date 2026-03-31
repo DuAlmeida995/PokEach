@@ -70,7 +70,7 @@ Gerencia a negociação P2P direta entre dois treinadores. Utiliza um modelo sim
 
 ---
 
-### 💬 3. Módulo de Chat Global (Pub/Sub)
+### 3. Módulo de Chat Global (Pub/Sub)
 Gerencia a comunicação assíncrona em tempo real utilizando Redis Pub/Sub.
 
 **Mensagens do Tópico Global:**
