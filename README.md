@@ -171,7 +171,7 @@ Gerencia a geração procedural de recursos e a resolução de condições de co
 Projeto desenvolvido por:
 
 * **André Portela** -
-* * **Davi Oliveira** -  
+* **Davi Oliveira** -  
 * **Eduardo Almeida** - 
 * **Júlio Arroio** -
 
