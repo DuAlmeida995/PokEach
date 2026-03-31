@@ -36,7 +36,7 @@ graph TD
     classDef client fill:#f9f,stroke:#333,stroke-width:2px,color:#fff;
     classDef server fill:#bbf,stroke:#333,stroke-width:2px,color:#fff;
     classDef redis fill:#f66,stroke:#333,stroke-width:2px,color:#fff;
-    classDef db fill:#ff9,stroke:#333,stroke-width:2px,color:#fff;
+    classDef db fill:#ff9,stroke:#333,stroke-width:2px,color:#000;
 
     subgraph FrontEnd ["Clientes (React / Next.js)"]
         C1(Treinador JoJo):::client
