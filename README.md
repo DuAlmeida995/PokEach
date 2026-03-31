@@ -28,7 +28,7 @@ As transações críticas do jogo exigem garantias rígidas de consistência.
 
 ---
 
-## 📩 Especificação de Mensagens e Protocolos
+## Especificação de Mensagens e Protocolos
 
 Para suportar a arquitetura descentralizada, o sistema utiliza diferentes protocolos de comunicação dependendo da necessidade de consistência ou velocidade da operação. Abaixo estão detalhados os "payloads" (conteúdos) das mensagens trocadas no sistema, divididas por módulos.
 
