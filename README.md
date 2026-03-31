@@ -33,15 +33,15 @@ As transações críticas do jogo exigem garantias rígidas de consistência.
 ```mermaid
 graph TD
     %% Estilos
-    classDef client fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef server fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef client fill:#f9f,stroke:#333,stroke-width:2px,color:#fff;
+    classDef server fill:#bbf,stroke:#333,stroke-width:2px,color:#fff;
     classDef redis fill:#f66,stroke:#333,stroke-width:2px,color:#fff;
-    classDef db fill:#ff9,stroke:#333,stroke-width:2px;
+    classDef db fill:#ff9,stroke:#333,stroke-width:2px,color:#fff;
 
     subgraph FrontEnd ["Clientes (React / Next.js)"]
-        C1(Treinador Davizao):::client
-        C2(Treinador Andre):::client
-        C3(Treinador Eduardo):::client
+        C1(Treinador JoJo):::client
+        C2(Treinador Roger Machado):::client
+        C3(Treinador Cellbit):::client
     end
 
     subgraph Middleware ["Mensageria Assincrona"]
