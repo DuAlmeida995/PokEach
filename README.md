@@ -1,30 +1,35 @@
- # Sistema Distribuído de Coleção e Troca de Pokémon (NFTs)
-
+# Sistema Distribuído de Coleção e Troca de Pokémon (NFTs)
 
 ## Sobre o Projeto
-
-O sistema implementa uma infraestrutura distribuída inspirada na dinâmica de colecionismo de Pokémon e seu objetivo principal é construir uma arquitetura descentralizada e tolerante a falhas onde cada Pokémon atua como um ativo digital único (NFT) com atributos variáveis (IVs). Os usuários podem interagir em um chat global em tempo real, competir por capturas (spawns aleatórios) e realizar trocas (P2P) de forma segura através do "PC", um sistema de armazenamento persistente e distribuído.
+O sistema implementa uma infraestrutura distribuída inspirada na dinâmica de colecionismo de Pokémon. Seu objetivo principal é construir uma plataforma descentralizada e tolerante a falhas onde cada Pokémon atua como um ativo digital único (NFT) com atributos variáveis (IVs). Os usuários podem interagir em um chat global em tempo real, competir por capturas (spawns aleatórios) e realizar trocas diretas de forma segura através do "PC", um sistema de armazenamento persistente e distribuído.
 
 ---
 
-## Arquitetura de Sistemas Distribuídos
+## Arquitetura do Sistema: O Modelo Híbrido
 
-Para garantir que o sistema não dependa de um servidor centralizado sujeito a ponto único de falha, a arquitetura foi dividida em dois grandes subsistemas, aplicando os principais conceitos da literatura de Sistemas Distribuídos:
+Para garantir que o sistema não dependa de um servidor centralizado (sujeito a um ponto único de falha) e, ao mesmo tempo, evite que clientes manipulem as regras do jogo, a topologia adota uma **Arquitetura Híbrida**. Ela é dividida em duas grandes camadas com padrões de comunicação e responsabilidades distintos:
 
-### 1. Comunicação Assíncrona: Chat Global e Spawns (Pub/Sub)
-A dinâmica de tempo real do jogo foi isolada do núcleo transacional pesado.
-* **Middleware:** Utilizamos o **Redis Pub/Sub** para gerenciar a comunicação.
-* **Funcionamento:** Quando a lógica do backend decide gerar um Pokémon selvagem, o evento é publicado em um tópico global. Todos os nós da rede (e por consequência, os clientes conectados a eles) recebem a notificação simultaneamente e de forma ordenada. Isso garante alta performance e baixo acoplamento entre os serviços.
+### 1. Camada de Acesso: Cliente-Servidor (Frontend)
+A interação com o usuário final ocorre via um modelo estrito de **Cliente-Servidor**, utilizando WebSockets.
+* **Funcionamento:** Os navegadores dos jogadores atuam como clientes leves (*Thin Clients*). Eles não participam do armazenamento distribuído e apenas enviam intenções de ação (ex: "tentar capturar"). Um dos nós servidores recebe esse pedido e atua como a autoridade central que valida a requisição, garantindo a segurança do estado do jogo contra trapaças na ponta do cliente.
 
-### 2. Nomeação e Armazenamento: O "PC" (P2P Estruturado)
-O inventário dos jogadores não fica em um banco de dados relacional clássico.
-* **Modelo:** Implementação de uma Tabela de Hash Distribuída (**DHT**) baseada no algoritmo **Chord**.
-* **Funcionamento:** A rede forma um anel lógico. Cada Pokémon capturado recebe um identificador único (Hash) e é armazenado no nó responsável por aquele segmento do anel. Isso resolve o problema de Nomeação e garante que a busca por um ativo ocorra em complexidade logarítmica, distribuindo a carga de armazenamento entre as máquinas.
+### 2. Camada de Infraestrutura: P2P Estruturado (Backend)
+A inteligência de negócios, coordenação e persistência de dados ocorrem exclusivamente na comunicação entre os nós servidores, que operam internamente como uma rede **Peer-to-Peer (P2P) Estruturada**. Esta camada resolve os principais desafios clássicos de Sistemas Distribuídos:
 
-### 3. Coordenação e Exclusão Mútua: Capturas e Trocas
-As transações críticas do jogo exigem garantias rígidas de consistência.
-* **Concorrência de Captura:** Se múltiplos jogadores tentarem capturar o mesmo Pokémon gerado no chat no mesmo milissegundo, o sistema utiliza algoritmos de **Exclusão Mútua Distribuída** (Distributed Locks) para garantir a atomicidade da operação. Apenas a primeira requisição adquire o bloqueio, evitando a duplicação de ativos.
-* **Trocas P2P (Trade):** Durante a troca direta de ativos entre dois jogadores em nós diferentes, o sistema coordena uma transação segura. Caso ocorra uma queda de rede em qualquer um dos nós durante o processo, a transação sofre *rollback*, prevenindo a clonagem ou perda de Pokémon.
+#### A. Nomeação e Armazenamento: O "PC" (DHT Chord)
+O inventário dos jogadores não é salvo em um banco de dados relacional clássico.
+* **Modelo:** Implementação de uma Tabela de Espalhamento Distribuída (**DHT**) baseada no algoritmo **Chord**.
+* **Funcionamento:** A rede de servidores forma um anel lógico. Cada Pokémon capturado recebe um identificador plano único (Hash) e é armazenado no nó responsável por aquele segmento do anel. Isso resolve o problema de Nomeação, garante o balanceamento de carga entre as máquinas e permite que a busca por um ativo ocorra em complexidade algorítmica de $O(\log N)$.
+
+#### B. Coordenação e Exclusão Mútua: Capturas e Trocas
+As transações críticas do jogo exigem garantias rígidas de consistência entre os nós pares.
+* **Concorrência de Captura:** Se múltiplos jogadores (conectados a nós diferentes) tentarem capturar o mesmo Pokémon no exato mesmo milissegundo, o sistema utiliza algoritmos de **Exclusão Mútua Distribuída** (*Distributed Locks*) entre os nós para garantir a atomicidade da operação. Apenas a primeira requisição adquire o bloqueio, evitando a clonagem de ativos.
+* **Trocas P2P (Trade):** Durante a troca direta de ativos entre dois jogadores, o sistema coordena uma transação segura utilizando comunicação síncrona (gRPC) entre os nós correspondentes. Caso ocorra uma queda de rede em qualquer um dos processos durante a operação, a transação sofre *rollback*, prevenindo a perda ou duplicação de Pokémon.
+
+#### C. Comunicação Assíncrona: Chat Global e Spawns (Pub/Sub)
+A dinâmica de eventos em tempo real foi isolada do núcleo transacional do anel P2P.
+* **Middleware:** Utilização do **Redis** com o padrão **Publish/Subscribe**.
+* **Funcionamento:** Quando a lógica do jogo decide gerar um Pokémon selvagem, o evento é publicado em um tópico global (*Fire and Forget*). Todos os nós da rede recebem a notificação de forma simultânea, ordenada e assíncrona, repassando a informação aos clientes conectados. Isso garante alta performance e elimina o acoplamento temporal entre os servidores.
 
 ---
 
@@ -33,12 +38,12 @@ As transações críticas do jogo exigem garantias rígidas de consistência.
 ```mermaid
 graph TD
     %% Estilos
-    classDef client fill:#f9f,stroke:#333,stroke-width:2px,color:#fff;
-    classDef server fill:#bbf,stroke:#333,stroke-width:2px,color:#fff;
+    classDef client fill:#f9f,stroke:#333,stroke-width:2px,color:#000;
+    classDef server fill:#bbf,stroke:#333,stroke-width:2px,color:#000;
     classDef redis fill:#f66,stroke:#333,stroke-width:2px,color:#fff;
     classDef db fill:#ff9,stroke:#333,stroke-width:2px,color:#000;
 
-    subgraph FrontEnd ["Clientes (Linguagem a Definir)"]
+    subgraph FrontEnd ["Clientes (React / Next.js)"]
         C1(Treinador JoJo):::client
         C2(Treinador Roger Machado):::client
         C3(Treinador Cellbit):::client
@@ -54,9 +59,9 @@ graph TD
         N3["No Servidor C<br>(Hoenn)"]:::server
         
         %% Conexoes do Anel Chord (P2P)
-        N1 <-->|gRPC / DHT Chord<br>Exclusao Mutua| N2
-        N2 <-->|gRPC / DHT Chord<br>Exclusao Mutua| N3
-        N3 <-->|gRPC / DHT Chord<br>Exclusao Mutua| N1
+        N1 <-->|gRPC / DHT Chord<br>Rede P2P| N2
+        N2 <-->|gRPC / DHT Chord<br>Rede P2P| N3
+        N3 <-->|gRPC / DHT Chord<br>Rede P2P| N1
     end
 
     subgraph Storage ["Armazenamento Distribuido (Inventario)"]
@@ -66,9 +71,9 @@ graph TD
     end
 
     %% Conexoes Clientes -> Servidores
-    C1 <-->|WebSocket| N1
-    C2 <-->|WebSocket| N2
-    C3 <-->|WebSocket| N3
+    C1 <-->|WebSocket<br>Cliente-Servidor| N1
+    C2 <-->|WebSocket<br>Cliente-Servidor| N2
+    C3 <-->|WebSocket<br>Cliente-Servidor| N3
 
     %% Conexoes Servidores -> Redis
     N1 -.->|Publish / Subscribe| R
