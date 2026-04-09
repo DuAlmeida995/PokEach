@@ -159,7 +159,37 @@ Gerencia a geração procedural de recursos e a resolução de condições de co
   * *Motivo 2: `FALHA_DESPAWN` (O tempo do Pokémon no mapa expirou).*
   * *Motivo 3: `FALHA_JA_CAPTURADO` (Outro jogador adquiriu o Lock do banco de dados antes).*
  
-## Nomeação e Processos
+## Nomeação (Naming)
+
+**1. Quais recursos precisam ser nomeados/identificados?**
+Em nosso sistema, três entidades fundamentais exigem identificadores únicos para que a rede distribuída opere sem ambiguidades:
+* **Ativos Digitais (Pokémon/NFTs):** Cada criatura capturada recebe um ID único para garantir a posse no banco de dados, permitir transferências e possibilitar o bloqueio lógico (lock) durante as transações de troca.
+* **Treinadores (Jogadores):** Identificadores de usuário para vincular os ativos do armazenamento aos seus respectivos donos e rotear as sessões.
+* **Nós Servidores (Instâncias Java):** Identificadores numéricos para que cada nó da rede participe e seja localizado dentro do anel de roteamento P2P.
+
+**2. Qual esquema de nomeação?**
+Utilizaremos o esquema de **Nomeação Plana (Flat Naming)**.
+* **Justificativa:** Os identificadores (como Hashes criptográficos ou UUIDs) não contêm informações legíveis, hierárquicas ou geográficas sobre onde o recurso está armazenado. O "Pikachu do Treinador JoJo" será convertido em um hash opaco (ex: `8f4a2b...`). Isso é fundamental para que o algoritmo consiga distribuir os dados de forma matematicamente balanceada, ignorando a semântica ou origem do item no jogo.
+
+**3. Dado o esquema, qual mecanismo de resolução de nomes?**
+O mecanismo de resolução será uma **Tabela de Espalhamento Distribuída (DHT)**, implementada através do algoritmo **Chord**.
+* **Justificativa:** Como a nomeação é plana, o cliente não consegue deduzir em qual servidor físico o seu Pokémon está guardado apenas olhando para o ID. A requisição chega ao nó Gateway (ao qual o cliente está conectado), que aplica a função Hash sobre o ID do Pokémon e consulta sua *Finger Table* (tabela de roteamento interna do Chord) para descobrir matematicamente qual nó detém aquele recurso. Isso resolve o nome e localiza o dado com complexidade de busca de $O(\log N)$.
+
+---
+
+## Processos (Processes)
+
+**1. Faz sentido usar threads?**
+Sim, o uso de múltiplas threads é **obrigatório** para a viabilidade do backend.
+* **Justificativa:** O servidor Java precisará lidar com alta concorrência. Utilizaremos *Thread Pools* dedicadas para separar responsabilidades: threads exclusivas para manter as conexões WebSocket com os clientes, threads para processar as chamadas remotas P2P (gRPC) sem bloquear a interface de outros usuários, e threads em *background* rodando rotinas de tolerância a falhas (sinais de *heartbeat*) e escutando publicações do Redis.
+
+**2. Servidores Stateful ou Stateless?**
+Para a camada de rede P2P (Backend Java), os servidores serão fortemente **Stateful (Com Estado)**.
+* **Justificativa:** Diferente de uma API web comum (Stateless), nossa arquitetura exige que cada nó guarde o estado atual da rede na memória RAM. Eles precisam manter sua *Finger Table* atualizada (quem são seus vizinhos no anel P2P), gerenciar as sessões abertas de WebSocket e rastrear rigorosamente os *Locks* (travas de exclusão mútua) ativos durante as transações de troca em andamento.
+
+**3. Faz sentido usar técnicas de virtualização?**
+Sim, o projeto utilizará virtualização em nível de sistema operacional através de **Containerização (Docker)**.
+* **Justificativa:** Não utilizaremos Máquinas Virtuais (VMs) tradicionais devido ao alto overhead de consumo de hardware (Hypervisor). O Docker nos permite empacotar a aplicação Java, o Redis e os bancos de dados leves em containers isolados. Isso resolve conflitos de dependências e permite simular a execução de múltiplos nós distribuídos em portas diferentes (`localhost:8081`, `8082`, `8083`) simultaneamente em uma única máquina de desenvolvimento para a apresentação acadêmica.
 
 ## Tecnologias Utilizadas
 
