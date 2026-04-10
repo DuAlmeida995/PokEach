@@ -191,6 +191,28 @@ Para a camada de rede P2P (Backend Java), os servidores serão fortemente **Stat
 Sim, o projeto utilizará virtualização em nível de sistema operacional através de **Containerização (Docker)**.
 * **Justificativa:** Não utilizaremos Máquinas Virtuais (VMs) tradicionais devido ao alto overhead de consumo de hardware (Hypervisor). O Docker nos permite empacotar a aplicação Java, o Redis e os bancos de dados leves em containers isolados. Isso resolve conflitos de dependências e permite simular a execução de múltiplos nós distribuídos em portas diferentes (`localhost:8081`, `8082`, `8083`) simultaneamente em uma única máquina de desenvolvimento para a apresentação acadêmica.
 
+## Coordenação
+
+**1. Será necessário algum mecanismo de sincronização? Relógio Real ou Lógico?**
+Sim, a sincronização é fundamental, e utilizaremos **Relógios Lógicos (Relógios de Lamport)**.
+* **Justificativa:** Em um sistema distribuído, depender de Relógios Físicos (mesmo com sincronização via NTP) é perigoso devido ao desvio (*clock skew*). Se dois treinadores (conectados a nós diferentes) tentarem capturar o mesmo Pokémon gerado no mapa, não importa quem clicou no "milisegundo real" exato, pois os relógios das máquinas podem divergir. O Relógio de Lamport garante a **ordenação causal** dos eventos. O sistema registrará os carimbos de tempo lógico (timestamps) das requisições, garantindo que a rede processe os eventos na ordem correta e entre em consenso sobre quem foi o primeiro a solicitar a captura.
+
+**2. Será necessário empregar exclusão mútua (distribuída)? Qual algoritmo?**
+Sim, é estritamente necessária para evitar o problema crítico de *Double Spending* (clonagem de ativos/Pokémon) durante trocas e capturas concorrentes. 
+* **Algoritmo Escolhido:** Utilizaremos uma adaptação do **Algoritmo Centralizado por Recurso** (alavancando a arquitetura da DHT).
+* **Justificativa:** Como utilizamos o algoritmo Chord, cada ativo (Pokémon) possui um nó específico responsável por ele (determinado pelo Hash). Quando uma transação de troca (Trade) se inicia, o nó responsável atua temporariamente como o Coordenador da Exclusão Mútua para aquele ativo específico. Ele concede a trava (*Lock*) de acesso exclusivo para a transação e enfileira (ou rejeita) quaisquer outras tentativas de acesso até que a transação receba o *commit* ou *rollback*, garantindo a atomicidade e liberando o recurso (Unlock) logo em seguida.
+
+**3. Será necessário um algoritmo de eleição? Qual?**
+Sim, algoritmos de eleição são necessários para cenários de tolerância a falhas.
+* **Algoritmo Escolhido:** Utilizaremos o **Algoritmo em Anel (Ring Election Algorithm)**.
+* **Justificativa:** Nossa rede backend já está estruturada em uma topologia lógica circular devido ao P2P Chord. Se o nó coordenador de uma determinada rotina cair (por exemplo, o nó temporariamente responsável por coordenar a geração aleatória de *Spawns* no mapa), a rede detecta a falha através da interrupção de *heartbeats*. A partir daí, uma mensagem de eleição circula pelo anel, acumulando os IDs dos nós sobreviventes, até dar a volta completa e eleger o nó ativo com o maior ID (ou ID sucessor mais próximo) para assumir a responsabilidade, restaurando o funcionamento sem intervenção manual.
+
+**4. Se vai usar pub/sub, como será implementado?**
+A comunicação em grupo para eventos assíncronos será desacoplada da rede P2P estrita, utilizando **Redis Pub/Sub** como *Middleware* de mensageria.
+* **Justificativa da Implementação:**
+    * **Chat Global:** Quando um jogador envia uma mensagem, o seu respectivo Nó Java (Publisher) publica a mensagem no tópico `chat_global` do Redis. Simultaneamente, todos os outros Nós Java atuam como Inscritos (Subscribers) ouvindo esse tópico. Ao receberem a mensagem do Redis, eles a repassam aos seus respectivos clientes via WebSocket.
+    * **Spawns de Pokémon:** A lógica de geração de um Pokémon selvagem publica as coordenadas e os dados do ativo em um tópico `spawns_event`. O padrão de "atire e esqueça" (*Fire and Forget*) do Redis permite que a notificação chegue a todos os jogadores quase em tempo real, sem que os servidores Java fiquem bloqueados esperando a confirmação de recebimento uns dos outros.
+
 ## Tecnologias Utilizadas
 
 * **Backend / Nós P2P:** Java 
