@@ -213,6 +213,21 @@ A comunicação em grupo para eventos assíncronos será desacoplada da rede P2P
     * **Chat Global:** Quando um jogador envia uma mensagem, o seu respectivo Nó Java (Publisher) publica a mensagem no tópico `chat_global` do Redis. Simultaneamente, todos os outros Nós Java atuam como Inscritos (Subscribers) ouvindo esse tópico. Ao receberem a mensagem do Redis, eles a repassam aos seus respectivos clientes via WebSocket.
     * **Spawns de Pokémon:** A lógica de geração de um Pokémon selvagem publica as coordenadas e os dados do ativo em um tópico `spawns_event`. O padrão de "atire e esqueça" (*Fire and Forget*) do Redis permite que a notificação chegue a todos os jogadores quase em tempo real, sem que os servidores Java fiquem bloqueados esperando a confirmação de recebimento uns dos outros.
 
+## Justificativa da Topologia: Por que 3 Nós Servidores?
+
+Durante o desenho da arquitetura, a principal questão foi determinar onde ocorreria o processamento distribuído e qual a quantidade ideal de nós. A decisão de utilizar exatamente 3 processos servidores no backend (Java) responde a duas necessidades fundamentais da engenharia de sistemas distribuídos:
+
+### 1. Por que não 0 servidores? (A Necessidade de Autoridade)
+A hipótese de eliminar os servidores e transferir o anel P2P inteiramente para os navegadores dos jogadores (um modelo 100% P2P no *frontend*) foi descartada por dois motivos críticos:
+* **Segurança e Prevenção de Trapaças:** O ambiente do cliente (navegador web) é inerentemente manipulável. Sem um servidor atuando como "juiz" isolado e confiável, usuários mal-intencionados poderiam alterar o código local para forjar capturas, forçar atributos máximos em ativos ou reter requisições de *Lock*. O modelo híbrido confina os clientes e institui o backend como a Autoridade de Validação inquestionável das regras do jogo.
+* **Volatilidade de Armazenamento (Churn):** Se a Tabela Hash Distribuída dependesse do armazenamento local dos navegadores, o simples ato de um usuário fechar a aba resultaria na perda permanente dos ativos que estavam sob a custódia lógica daquele cliente.
+
+### 2. Por que exatamente 3? (A Matemática da Distribuição)
+Uma vez estabelecida a necessidade de um backend dedicado, a escolha por 3 instâncias não visa a simples redundância (backup), mas representa o **limite matemático inferior** exigido para demonstrar a eficácia dos algoritmos de distribuição propostos:
+* **Roteamento Multi-Salto (Multi-Hop):** Utilizar apenas 2 nós criaria uma rede de conexão direta e trivial. Com 3 nós, o anel lógico exige que a *Finger Table* do algoritmo Chord atue de forma plena, provando que um nó consegue rotear mensagens passando por um intermediário na rede até chegar ao seu destino.
+* **Quórum e Consenso (Prevenção de *Split-Brain*):** Para evitar o problema do "Cérebro Dividido" — onde uma falha de conexão na rede divide os servidores e faz ambos pensarem que possuem acesso exclusivo ao banco — aplicamos a fórmula de quórum estrito de $2f + 1$. Para o sistema tolerar 1 falha ($f=1$) mantendo a consistência dos *Locks* na exclusão mútua, exige-se no mínimo 3 servidores. Assim, assegura-se que sempre haverá uma maioria justa (2 votos) para arbitrar as transações de troca.
+* **Particionamento Real (Sharding):** A configuração com 3 nós comprova a eficácia do particionamento horizontal promovido pela DHT. O espaço de identificadores (IDs dos ativos) é efetivamente fragmentado em três zonas distintas de responsabilidade, provando que o sistema realiza o balanceamento de carga da persistência de dados, diferenciando-se de um espelhamento centralizado tradicional.
+
 ## Tecnologias Utilizadas
 
 * **Backend / Nós P2P:** Java 
