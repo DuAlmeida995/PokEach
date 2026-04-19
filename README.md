@@ -37,7 +37,7 @@ graph TD
         N1["Nó Executável<br>(Treinador JoJo)"]:::node
         N2["Nó Executável<br>(Treinador Roger)"]:::node
         N3["Nó Executável<br>(Treinador Cellbit)"]:::node
-        N4["Nó Executável<br>(Treinador Eduardo)"]:::node
+        N4["Nó Executável<br>(Treinador Jorginho do Flamengo )"]:::node
         
         %% Conexões Diretas (Sockets)
         N1 <-->|Sockets TCP| N2
