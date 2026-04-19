@@ -66,7 +66,7 @@ Nesta arquitetura, todas as mensagens trafegam diretamente entre os Nós pares d
 
 ## 1. Módulo PC (O Livro-Razão)
 
-Como todos os nós possuem uma cópia do banco de dados completo, não há tráfego de rede para visualizar inventários. A busca por um Pokémon ou pelos ativos de um treinador ocorre inteiramente na memória/disco local do próprio jogador, com complexidade de tempo constante ($O(1)$) ou através de indexações locais.
+Como todos os nós possuem uma cópia do banco de dados completo, não há tráfego de rede para visualizar inventários. A busca por um Pokémon ou pelos ativos de um treinador ocorre inteiramente na memória/disco local do próprio jogador, com complexidade de tempo constante O(1) ou através de indexações locais.
 
 ## 2. Módulo de Transações (Trocas e Capturas)
 
