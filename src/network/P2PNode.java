@@ -3,6 +3,8 @@ package network;
 import core.Blockchain;
 import java.util.ArrayList;
 import java.util.List;
+import network.MessageParser;
+import network.SocketServer;
 
 public class P2PNode {
     
@@ -18,9 +20,10 @@ public class P2PNode {
     }
 
     public void iniciar() {
-        // Passamos 'this' (o próprio P2PNode) para o servidor, assim ele poderá
-        // repassar as mensagens recebidas para a nossa Blockchain no futuro.
-        servidor = new SocketServer(portaLocal);
+        // Cria o parser passando a si mesmo (this) como referência
+        MessageParser parser = new MessageParser(this);
+        // Passa o parser para dentro do servidor!
+        servidor = new SocketServer(portaLocal, parser);
         servidor.start();
     }
 
