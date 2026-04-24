@@ -29,8 +29,9 @@ public class SocketServer extends Thread {
                 String ipVizinho = socketVizinho.getInetAddress().getHostAddress();
                 System.out.println("[REDE] Novo vizinho conectado! IP: " + ipVizinho);
 
-                // TODO: no futuro, passaremos este socket para outra classe ler a mensagem (Transaction, Block, etc.)
-                // por enquanto so fechamos a conexão porque ainda nao temos nada pra ler
+                java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(socketVizinho.getInputStream()));
+                String mensagemRecebida = in.readLine();
+                System.out.println("[REDE] Mensagem recebida: " + mensagemRecebida);
             }
             
             serverSocket.close();
