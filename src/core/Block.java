@@ -1,7 +1,9 @@
+package core;
+
 import java.security.MessageDigest;
 import java.util.Date;
 import java.util.List;
-package core;
+
 
 public class Block {
     private String hash;
